@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Write a tonto ontology and see its OntoUML diagram, in the browser. Nothing is sent anywhere.">
+    <title>tonto playground</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='2' width='6' height='4' rx='1' fill='%23e88'/%3E%3Crect x='9' y='10' width='6' height='4' rx='1' fill='%238c8'/%3E%3Cpath d='M4 6v6h5' stroke='%23666' fill='none'/%3E%3C/svg%3E">
+</head>
+<body>
+    <header id="bar">
+        <span class="brand">tonto <span class="brand-light">playground</span></span>
+        <label class="examples">
+            <span class="visually-hidden">Open an example</span>
+            <select id="examples" title="Replace the text with an example model">
+                <option value="">Examples…</option>
+            </select>
+        </label>
+        <button id="open" type="button" title="Open a .tonto file from this computer">Open…</button>
+        <input id="openFile" type="file" accept=".tonto,text/plain" hidden>
+        <button id="download" type="button" title="Save the text as a .tonto file">Download</button>
+        <button id="share" type="button" title="Copy a link that contains this model">Copy link</button>
+        <span class="spacer"></span>
+        <span id="problems" class="problems" role="status" aria-live="polite"></span>
+        <span class="pane-switch" role="group" aria-label="Show">
+            <button id="showText" type="button" aria-pressed="true">Text</button>
+            <button id="showDiagram" type="button" aria-pressed="false">Diagram</button>
+        </span>
+        <button id="theme" type="button" title="Switch between light and dark">Dark</button>
+        <a class="about" href="https://github.com/nemo-ufes/tonto" target="_blank" rel="noopener" title="The tonto language">About tonto</a>
+    </header>
+    <main id="split" data-show="text">
+        <section id="editor" aria-label="tonto text"></section>
+        <div id="divider" role="separator" aria-orientation="vertical" aria-label="Resize the panes" tabindex="0"></div>
+        <section id="diagram" aria-label="OntoUML diagram"></section>
+    </main>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

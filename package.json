@@ -1,0 +1,44 @@
+{
+    "name": "tonto-playground",
+    "version": "0.1.0",
+    "private": true,
+    "description": "tonto in the browser: one .tonto file in an editor, its OntoUML diagram beside it, nothing sent anywhere",
+    "license": "MIT",
+    "type": "module",
+    "scripts": {
+        "upstream": "node scripts/upstream.mjs build",
+        "postinstall": "node scripts/upstream.mjs link",
+        "dev": "vite",
+        "build": "tsc --noEmit && vite build",
+        "preview": "vite preview",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:e2e": "playwright test"
+    },
+    "dependencies": {
+        "chevrotain": "12.0.0",
+        "elkjs": "0.12.0",
+        "langium": "4.3.1",
+        "lz-string": "1.5.0",
+        "monaco-editor": "0.57.0",
+        "pathe": "2.0.3",
+        "vscode-jsonrpc": "9.0.1",
+        "vscode-languageserver": "10.0.1",
+        "vscode-languageserver-protocol": "3.18.2",
+        "vscode-languageserver-types": "3.18.0",
+        "vscode-uri": "3.1.0"
+    },
+    "devDependencies": {
+        "@playwright/test": "1.63.0",
+        "@types/node": "22.18.0",
+        "typescript": "5.9.3",
+        "vite": "7.3.7",
+        "vitest": "4.1.11"
+    },
+    "overrides": {
+        "vite": "$vite"
+    },
+    "engines": {
+        "node": ">=22"
+    }
+}

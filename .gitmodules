@@ -1,0 +1,4 @@
+[submodule "vendor/tonto-visualizer"]
+	path = vendor/tonto-visualizer
+	url = https://github.com/nemo-ufes/tonto-visualizer.git
+	branch = main

@@ -1,0 +1,208 @@
+:root {
+    --background: #ffffff;
+    --surface: #f3f3f3;
+    --foreground: #1f1f1f;
+    --muted: #5f5f5f;
+    --border: #d4d4d4;
+    --accent: #005fb8;
+    --accent-foreground: #ffffff;
+    --error: #c42b1c;
+    --warning: #9a6700;
+    --font: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif;
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    --background: #1e1e1e;
+    --surface: #252526;
+    --foreground: #d4d4d4;
+    --muted: #a0a0a0;
+    --border: #3c3c3c;
+    --accent: #3794ff;
+    --accent-foreground: #ffffff;
+    --error: #f48771;
+    --warning: #cca700;
+    color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background: var(--background);
+    color: var(--foreground);
+    font: 13px/1.4 var(--font);
+}
+
+#bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+}
+
+.brand {
+    font-weight: 600;
+    font-size: 15px;
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.brand-light {
+    font-weight: 400;
+    color: var(--muted);
+}
+
+#bar button,
+#bar select,
+#bar .about {
+    font: inherit;
+    color: var(--foreground);
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 9px;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+#bar button:hover,
+#bar select:hover,
+#bar .about:hover {
+    border-color: var(--accent);
+}
+
+#bar button:focus-visible,
+#bar select:focus-visible,
+#bar .about:focus-visible,
+#divider:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+#bar select {
+    max-width: 16em;
+}
+
+.spacer {
+    flex: 1;
+}
+
+.problems {
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.problems .errors {
+    color: var(--error);
+}
+
+.problems .warnings {
+    color: var(--warning);
+}
+
+.pane-switch {
+    display: none;
+}
+
+.pane-switch button[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-foreground);
+}
+
+#split {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--editor-width, 45%) 5px 1fr;
+}
+
+#editor,
+#diagram {
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+#divider {
+    background: var(--border);
+    cursor: col-resize;
+}
+
+#divider:hover,
+#divider.dragging {
+    background: var(--accent);
+}
+
+#diagram iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+.toast {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--foreground);
+    color: var(--background);
+    padding: 6px 14px;
+    border-radius: 4px;
+    max-width: calc(100vw - 32px);
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/*
+ * A phone has room for one pane: the switch in the bar chooses which, and the
+ * divider has nothing to divide.
+ */
+@media (max-width: 760px) {
+    #bar {
+        padding: 6px 16px;
+    }
+
+    .pane-switch {
+        display: inline-flex;
+        gap: 2px;
+    }
+
+    #split {
+        grid-template-columns: 1fr;
+    }
+
+    #divider {
+        display: none;
+    }
+
+    #split[data-show="text"] #diagram,
+    #split[data-show="diagram"] #editor {
+        display: none;
+    }
+}
