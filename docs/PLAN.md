@@ -83,8 +83,10 @@ to its host only through `acquireVsCodeApi().postMessage` and the typed
 `ToPanel` / `FromPanel` messages in `protocol.ts`. A VS Code webview is a page in
 an iframe, so the playground does the same:
 
-1. Load the panel bundle in an `<iframe>` (or a shadow root) with the same HTML
-   skeleton `diagram-panel.ts` generates.
+1. Load the panel in an `<iframe>` (or a shadow root) from what the extension
+   package exports (§6): `tonto-visualizer/panel/skeleton` (`PANEL_BODY`, the
+   page body the extension itself uses), `panel/script` (the built panel) and
+   `panel/style`. The playground keeps no copy of the markup.
 2. Before it runs, define `acquireVsCodeApi()` to return
    `{ postMessage, getState, setState }` backed by `window.parent.postMessage`
    and `sessionStorage`.
@@ -95,12 +97,14 @@ an iframe, so the playground does the same:
    - answer `export` with SVG and PNG downloads;
    - translate `reveal` / `selected` into Monaco selections, and the reverse.
 
-`diagram-panel.ts` imports `vscode` and cannot be reused directly, but its
-reconciliation logic (`view-store.ts`, `restoration.ts`, `filters.ts`) should be
-reused wherever it is free of `vscode`.
+`diagram-panel.ts` imports `vscode` and cannot be reused directly. Its
+`vscode`-free helpers are exported for reuse: `panel/protocol` (message
+types), `panel/restoration` and `panel/filters`. `view-store.ts` reads and
+writes files through `vscode` and is not exported; the page host keeps the
+arrangement in `localStorage` instead.
 
-The longer-term shape is a shared panel package with a `Host` interface, used by
-both the extension and the playground (§6).
+The page host stays in this repository. A shared panel package with a `Host`
+interface would remove it, but nothing here waits for one.
 
 ### 2.4 Layout off the main thread
 
@@ -118,12 +122,14 @@ without removing code. House style follows the sibling repositories: ESM,
 
 ## 3. Making `tonto-language` browser-safe
 
-The browser build fails on four Node modules and one Node global, all reached through
-`publication/workspace.ts` (with `utils/paths.ts`,
-`publication/document-validator.ts`, `lsp/ontology-actions.ts` and
-`lsp/tonto-file-operation-handler.ts`). That module deals with multi-file
-concerns: `tonto.json`, bundles, imports and the fetch cache. A single-file
-playground never reaches those paths, so substitutes are enough:
+The playground imports the language through `tonto-language/core` (§6),
+which leaves out the CLI session API and export writers. What `/core` still
+reaches from Node is four modules, all from `publication/workspace.ts` (with
+`utils/paths.ts`, `publication/document-validator.ts`,
+`lsp/ontology-actions.ts` and `lsp/tonto-file-operation-handler.ts`). That
+module deals with multi-file concerns: `tonto.json`, bundles, imports and the
+fetch cache. A single-file playground never reaches those paths, so
+substitutes are enough, and they stay in this repository's build:
 
 | module | substitute | why it is safe here |
 |---|---|---|
@@ -131,29 +137,35 @@ playground never reaches those paths, so substitutes are enough:
 | `node:path` | `pathe`, plus a `posix` export | pure string functions |
 | `node:crypto` | `randomUUID` from Web Crypto; any stable string hash for `createHash` | used for cache keys and temp file names only |
 | `node:async_hooks` | an `AsyncLocalStorage` that sets a value for the duration of `run` | one document, one build at a time |
-| global `process` | `{ cwd: () => '/' }` before the language loads | `configure()` calls `process.cwd()` when there is no workspace root, which is always the case here; the bundler does not catch this, it fails at runtime |
 
-Two more substitutions:
+`tonto`'s `test/core-entry.test.ts` lists exactly these imports, file by file,
+and fails on a new one, so the list cannot grow without tonto's CI noticing.
+A bundle of `/core` with only these four substitutes parses, validates and
+reads natures with no `process` global at all.
 
-- **The `tonto-language` package entry.** `index.ts` re-exports `api.ts`, which
-  imports `langium/node` and the CLI's file-system API. The playground aliases
-  `tonto-language` to a browser barrel exporting only `generated/ast`,
-  `generated/module`, `tonto-module` and `utils/relations`.
-- **`langium/node`.** Aliased to a stub that exports `EmptyFileSystem` as
-  `NodeFileSystem`, in case anything still reaches it.
-
-These substitutions are a stopgap. The right fix is upstream (§6).
+Pins older than the changes in §6 need three more substitutions: an alias
+from `tonto-language` to a hand-written barrel (the package root loads
+`api.ts`, which imports `langium/node`), a `langium/node` stub, and a
+`process` with `cwd: () => '/'` (an unguarded `process.cwd()` in
+`configure()`, which the bundler does not catch and which fails at runtime).
+Do not build against such pins; they are recorded here only to explain the
+history.
 
 ## 4. Consuming the sibling code
 
 The constraints:
 
 - `tonto-view` and `tonto-canvas` are private workspace packages, not on npm.
-- `tonto-view/src/language.ts` imports `getEffectiveNatures` and
-  `isUltimateSortal` by path from `vendor/tonto/packages/language/out/`, because
-  `tonto-language` does not export them.
-- The visualizer pins its own tonto submodule (`7cca85f`, 2026-10-19). That is
-  behind the current `tonto` (`69b4757`, 2026-10-24) at the time of writing.
+  The panel is part of the extension package (`tonto-visualizer`), which is
+  private too; the playground reaches its exports by depending on it as
+  `file:vendor/tonto-visualizer/packages/extension`.
+- `tonto-view` reads the language through `tonto-language/core` once the
+  visualizer change in §6 is merged. Before it, `tonto-view/src/language.ts`
+  imports `getEffectiveNatures` and `isUltimateSortal` by path from
+  `vendor/tonto/packages/language/out/`.
+- The visualizer pins its own tonto submodule. On `main` that is `7cca85f`
+  (2026-10-19, tonto 0.9.1); the visualizer branch in §6 moves it to the tonto
+  commit that adds `/core` (tonto 0.9.2).
 - Two copies of Langium in one bundle break the language at runtime: services
   registered with one copy are invisible to the other.
 
@@ -164,9 +176,10 @@ and one Langium. The build resolves `tonto-language`, `langium`, `chevrotain`
 and `vscode-languageserver` to that single copy (Vite `resolve.dedupe` plus
 aliases).
 
-Bumping tonto in the playground means bumping the visualizer pin first. That is
-deliberate: a diagram that disagrees with the validator is worse than no
-diagram.
+The playground pins the visualizer revision and uses the tonto revision nested
+inside it. Upgrade those pins only to an already-published visualizer revision
+that intentionally carries a compatible tonto pin; do not edit either
+submodule's contents as part of a playground dependency update.
 
 ## 5. Scope
 
@@ -205,17 +218,49 @@ diagram.
 - Editing the model from the diagram. The visualizer's roadmap excludes it for
   the same reasons.
 
-## 6. Upstream changes worth making
+## 6. Upstream changes
 
-None of these block the first release; each removes a stopgap from §3 or §4.
+This project consumes pinned revisions of `tonto` and `tonto-visualizer`.
+Browser adapters, the four Node substitutes, worker setup and the page host
+belong in `tonto-playground`. Upstream changes are kept to what makes the
+playground's coupling explicit and tested; none changes tonto's language
+semantics or validation behavior, and none should be made to fit the
+playground.
+
+### Made: declared entry points and the tests that hold them
+
+These are on branches, committed and not yet pushed or merged. Each is
+additive: the VS Code extensions, CLI and MCP server behave as before.
+
+| repository | branch | commit | change |
+|---|---|---|---|
+| `tonto` | `core-entry` | `75c0544` | `tonto-language/core`: services, AST, relation helpers, `getEffectiveNatures`, `isUltimateSortal`, gUFO export. `test/core-entry.test.ts` fails on a new Node import reached from `/core` or `/patterns`, on a Node-only dependency entry point, and on an unguarded `process` read. `process.cwd()` in `configure()` falls back to `/` where there is no `process`. |
+| `tonto-visualizer` | `core-entry-and-panel-exports` | `bc563d2` | Moves the tonto pin to `75c0544`; `tonto-view` reads the language through `/core` instead of by path. |
+| `tonto-visualizer` | `core-entry-and-panel-exports` | `7abfaf9` | The panel body moves to `src/webview/skeleton.ts`, shared by the extension and its tests. An `exports` map names `panel/script`, `panel/style`, `panel/skeleton`, `panel/protocol`, `panel/restoration` and `panel/filters`; `test/exports.test.ts` fails if any of them reaches `vscode`; `AGENTS.md` says what the exports promise. |
+
+They land in this order:
+
+1. Merge `tonto`'s `core-entry`. The visualizer's pin names `75c0544`, which
+   exists only in a local clone until it is pushed, and the visualizer's CI
+   checks submodules out from GitHub. If the merge squashes or rebases, move
+   the visualizer pin to the merged commit.
+2. Merge the visualizer branch only after tonto's `main` has `/core`: its
+   nightly CI builds against tonto's current `main`.
+3. Pin the playground to the merged visualizer revision (§4).
+
+### Not needed, and not planned
+
+The stand-ins in §3 and the tests above cover what these would. Propose one
+only if it becomes useful for its own repository, with its own review and
+tests.
 
 **In `tonto`:**
 
-1. A `tonto-language/browser` export: services, AST, relation helpers,
-   `generateGufo` and patterns, with no Node import anywhere in its graph.
+1. A `/core` with no Node import anywhere in its graph. That needs the next
+   two items.
 2. File access through an injected service instead of `node:fs` in
-   `publication/workspace.ts`, `utils/paths.ts` and `lsp/ontology-actions.ts`,
-   and no `process.cwd()` outside the CLI. Langium's `FileSystemProvider`
+   `publication/workspace.ts`, `utils/paths.ts` and `lsp/ontology-actions.ts`.
+   Langium's `FileSystemProvider`
    covers reads (`existsSync`, `readFileSync`), but not `realpath`, `lstat` or
    writes. Those must stay, behind a Node implementation the extension, CLI and
    MCP server inject: `realpath` keeps a symlinked import from loading as two
@@ -229,15 +274,13 @@ None of these block the first release; each removes a stopgap from §3 or §4.
    only while every wrapped check is synchronous; the wrapper should fail
    loudly if a check returns a promise, rather than silently validating in the
    wrong ontology's context.
-4. Export `getEffectiveNatures` and `isUltimateSortal`, so `tonto-view` can stop
-   importing by path.
 
 **In `tonto-visualizer`:**
 
-5. Move the panel into a package with a `Host` interface, so the extension and
+4. Move the panel into a package with a `Host` interface, so the extension and
    the playground share the panel and its host logic instead of the playground
    reimplementing a host.
-6. Publish `tonto-view` and `tonto-canvas` (or the shared panel package) to
+5. Publish `tonto-view` and `tonto-canvas` (or the shared panel package) to
    npm, so the playground can depend on versions instead of a submodule.
 
 ## 7. Milestones
@@ -250,13 +293,14 @@ None of these block the first release; each removes a stopgap from §3 or §4.
 | 3 | Interactive diagram | Reused panel in the page with the page host: drag, auto-arrange, filters, export, links between editor and diagram in both directions. |
 | 4 | Playground | Examples, share link, local saving, file open/download, `.tontoview` download, themes. |
 | 5 | Publish | GitHub Actions builds and deploys to GitHub Pages on every push to `main`. |
-| 6 | Upstream | §6 items proposed to the sibling repositories; stopgaps removed as they land. |
 
 ## 8. Tests
 
 - **Bundle smoke test:** build the browser bundle, load it in vitest with
   `happy-dom`, validate a correct and an incorrect model, and check the
-  diagnostics. This catches a new Node import upstream before users do.
+  diagnostics. `tonto`'s own test stops a new Node import before it is merged;
+  this one catches whatever still reaches the playground's bundle on a pin
+  update.
 - **Pipeline golden test:** for each example, the `ViewModel` from the worker
   equals the one `tonto-view-cli` prints for the same file.
 - **Look at the picture:** compare the playground's SVG export with
@@ -270,9 +314,9 @@ None of these block the first release; each removes a stopgap from §3 or §4.
 
 | risk | effect | mitigation |
 |---|---|---|
-| A new Node import in `tonto-language` | the browser build breaks on a pin bump | bundle smoke test (§8); upstream browser export (§6.1) |
+| A new Node import in `tonto-language` | the browser build breaks on a pin bump | `tonto`'s `core-entry.test.ts` fails on it before it merges (§6); the bundle smoke test (§8) catches the rest |
 | Duplicate Langium in the bundle | services silently fail to resolve | dedupe in the build; assert one copy in the smoke test |
 | `monaco-languageclient` version churn | editor breaks on upgrade | pin exact versions; upgrade deliberately |
 | Bundle size (~750 KB gzipped core + Monaco) | slow first load on poor connections | load ELK and the layout worker lazily; cache with a service worker |
-| `AsyncLocalStorage` substitute | wrong ontology context if builds interleave | one document; cancel the previous build before starting a new one; upstream fix (§6.3) |
-| The panel's HTML skeleton drifts from `diagram-panel.ts` | the reused panel finds missing elements | generate the skeleton from shared code once §6.5 lands; until then, a test that every `element(id)` the panel asks for exists |
+| `AsyncLocalStorage` substitute | wrong ontology context if builds interleave | keep the shim local; serialize document builds and verify context behavior; an upstream context API is not planned (§6) |
+| The panel or its protocol changes in the visualizer | the hosted panel breaks or misreads messages | the playground loads the panel's body, script and protocol from the visualizer's exports, never a copy; the visualizer's tests check every element the panel asks for and that no export reaches `vscode`, and its `AGENTS.md` treats a protocol change as breaking (§6) |
