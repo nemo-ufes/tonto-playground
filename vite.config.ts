@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
+import { thirdPartyNotices } from './scripts/third-party-notices.js';
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -23,7 +24,7 @@ const nodeStandIns = ['fs', 'path', 'crypto', 'async_hooks'].map(name => ({
  */
 const shared = [
     'langium', 'chevrotain', 'vscode-languageserver', 'vscode-languageserver-protocol',
-    'vscode-languageserver-types', 'vscode-jsonrpc', 'vscode-uri', 'elkjs'
+    'vscode-languageserver-types', 'vscode-languageserver-textdocument', 'vscode-jsonrpc', 'vscode-uri', 'elkjs'
 ];
 
 /**
@@ -46,10 +47,12 @@ const monacoWithoutLanguages: Plugin = {
     }
 };
 
+const notices = thirdPartyNotices();
+
 export default defineConfig({
     // Relative, so the same build serves from a domain root or a GitHub Pages path.
     base: './',
-    plugins: [monacoWithoutLanguages],
+    plugins: [monacoWithoutLanguages, notices.page],
     // Pre-bundling runs without the plugin above, so the dev server would load
     // a different Monaco from the one that is built and shipped.
     optimizeDeps: {
@@ -60,7 +63,8 @@ export default defineConfig({
         dedupe: shared
     },
     worker: {
-        format: 'es'
+        format: 'es',
+        plugins: () => [notices.worker]
     },
     build: {
         target: 'es2022',

@@ -47,15 +47,36 @@ The rendered diagram matches what the extension draws for the same model.
 └──────────────────────────────────────┘     └──────────────────────────┘
 ```
 
-### 2.1 Editor: Monaco + `monaco-languageclient`
+### 2.1 Editor: Monaco and its own LSP client
 
 The Langium server runs in a web worker. It uses `startLanguageServer` with
 `vscode-languageserver/browser`'s `BrowserMessageReader` and
 `BrowserMessageWriter`. Every editor feature tonto already provides comes
 through unchanged because the providers are LSP-based: diagnostics, quick
 fixes, completion, hover, rename, formatting, folding and semantic tokens.
-Base highlighting reuses the generated TextMate grammar in
-`tonto/packages/extension/syntaxes/tonto.tmLanguage.json`.
+
+**Changed in implementation:** Monaco has shipped its own LSP client (the
+`lsp` namespace) since 0.55, so `monaco-languageclient` and its VS Code API
+layers are not used. Monaco's client differs from VS Code's in three ways
+tonto depends on, bridged by `src/language/lsp-relay.ts` on the port between
+the two:
+
+- a request the server cancels (code actions asked before the document is
+  open) becomes an empty answer instead of an exception in the page;
+- code action requests get back the diagnostic `code` and `data` that Monaco
+  drops when it rebuilds diagnostics from its markers -- tonto picks a repair
+  by the code, so without this no quick fix appears;
+- with one document, actions that would write other files (splitting an
+  ontology into a file and a package) and diagnostics for the built-in
+  datatypes document are not passed on.
+
+The document's URI is `file:///playground/model.tonto`: tonto treats any
+other scheme as an imported, read-only ontology and offers it no repairs.
+
+Base highlighting is a Monarch grammar whose keyword pattern is read from the
+generated TextMate grammar in `tonto/packages/extension/syntaxes/`, and the
+language configuration is the extension's own file. Monaco's built-in
+languages are replaced with empty modules at build time.
 
 CodeMirror 6 was considered. It is several megabytes lighter, but its LSP
 client does not cover code actions or semantic tokens as completely, and quick
@@ -72,8 +93,12 @@ effects:
 - the AST lives in one place;
 - the page receives the same `ViewModel` the extension's host sends its panel;
 - "the picture survives a broken parse" works as it does in the extension: when
-  the document has parse errors, the worker sends the last good view with a
-  `stale` reason instead of a new one.
+  the document has parse errors, the worker sends what it could read with the
+  error, and the page keeps the last good picture with the error on show.
+
+The worker also sends tonto's pattern catalog once at start, for the Examples
+menu: the module holding it imports the whole language, which belongs in the
+worker rather than the page's bundle.
 
 ### 2.3 Diagram pane: the extension's panel, reused
 
@@ -103,19 +128,27 @@ types), `panel/restoration` and `panel/filters`. `view-store.ts` reads and
 writes files through `vscode` and is not exported; the page host keeps the
 arrangement in `localStorage` instead.
 
-The page host stays in this repository. A shared panel package with a `Host`
-interface would remove it, but nothing here waits for one.
+The page host stays in this repository (`src/diagram/host.ts`). It follows
+`DiagramPanel` closely, and its one copied helper, `prioritizeRelatorPaths`
+(private in the extension), is in `src/diagram/relator-paths.ts` with its
+source named. A shared panel package with a `Host` interface would remove
+both, but nothing here waits for one.
 
 ### 2.4 Layout off the main thread
 
-ELK runs in its own worker (`elkjs` supports this directly), so a large model
-does not freeze typing. Rendering uses `tonto-canvas/draw`, the half without
+ELK runs in its own worker, so a large model does not freeze typing. ELK's
+bundle decides what it is from its surroundings: with no `document` in a
+worker it becomes ELK's own worker and exports nothing, so the layout worker
+defines an empty `document` before ELK loads (`src/diagram/elk-in-a-worker.ts`). Rendering uses `tonto-canvas/draw`, the half without
 ELK: on the main thread for small diagrams, in a render worker for large ones,
 as the extension already does.
 
 ### 2.5 App shell
 
-Vite + vanilla TypeScript. The page is two panes, a draggable divider and a
+Vite + vanilla TypeScript. **Changed in implementation:** Vite 7, not 8:
+npm 11's resolver crashes on the optional `@vitejs/devtools` peer chain that
+Vite 8 (and Vitest's dependency on it) brings in; an `overrides` entry keeps
+Vitest on the project's Vite. The page is two panes, a draggable divider and a
 toolbar. The reused panel is vanilla DOM, so a UI framework would add weight
 without removing code. House style follows the sibling repositories: ESM,
 4-space indent, `tsc -b`, vitest, no default exports.
@@ -169,8 +202,13 @@ The constraints:
 - Two copies of Langium in one bundle break the language at runtime: services
   registered with one copy are invisible to the other.
 
-**Decision:** add `tonto-visualizer` as a git submodule under `vendor/`,
-checked out with `--recurse-submodules`, and use *its* nested `vendor/tonto`.
+**Decision (implemented):** `tonto-visualizer` is a git submodule under
+`vendor/`, checked out with `--recurse-submodules`, and the playground uses
+*its* nested `vendor/tonto`. `scripts/upstream.mjs` builds both the way the
+visualizer does and links `tonto-language`, `tonto-view`, `tonto-canvas` and
+`tonto-visualizer` into `node_modules` as symlinks to the same folders the
+visualizer's own workspace links to; `file:` dependencies would have had npm
+install into the submodule.
 That is one language version, the one the view was built and tested against,
 and one Langium. The build resolves `tonto-language`, `langium`, `chevrotain`
 and `vscode-languageserver` to that single copy (Vite `resolve.dedupe` plus
@@ -184,6 +222,8 @@ submodule's contents as part of a playground dependency update.
 ## 5. Scope
 
 ### First release
+
+All of the following is implemented and covered by the tests in section 8.
 
 - Editor with every LSP feature tonto provides (§2.1).
 - Live diagram with the last good picture kept while the text does not parse,
@@ -285,30 +325,38 @@ tests.
 
 ## 7. Milestones
 
-| # | milestone | done when |
-|---|---|---|
-| 0 | Scaffold | Vite + TS app builds; submodule in place; one script builds language, view and canvas; a vitest smoke test parses and validates `people.tonto` from the browser bundle. |
-| 1 | Editor | Monaco talks to the worker; diagnostics, quick fixes, completion, hover, formatting and semantic highlighting work on the examples. |
-| 2 | Static diagram | The worker sends `ViewModel`s; the page lays them out and draws SVG with pan/zoom; a broken parse keeps the last good picture. |
-| 3 | Interactive diagram | Reused panel in the page with the page host: drag, auto-arrange, filters, export, links between editor and diagram in both directions. |
-| 4 | Playground | Examples, share link, local saving, file open/download, `.tontoview` download, themes. |
-| 5 | Publish | GitHub Actions builds and deploys to GitHub Pages on every push to `main`. |
+| # | milestone | done when | status |
+|---|---|---|---|
+| 0 | Scaffold | Vite + TS app builds; submodule in place; one script builds language, view and canvas; a vitest smoke test parses and validates `people.tonto` from the browser bundle. | done |
+| 1 | Editor | Monaco talks to the worker; diagnostics, quick fixes, completion, hover, formatting and semantic highlighting work on the examples. | done |
+| 2 | Static diagram | The worker sends `ViewModel`s; the page lays them out and draws SVG with pan/zoom; a broken parse keeps the last good picture. | done, together with 3: the reused panel draws |
+| 3 | Interactive diagram | Reused panel in the page with the page host: drag, auto-arrange, filters, export, links between editor and diagram in both directions. | done |
+| 4 | Playground | Examples, share link, local saving, file open/download, `.tontoview` download, themes. | done, with one pane at a time on a phone |
+| 5 | Publish | GitHub Actions builds and deploys to GitHub Pages on every push to `main`. | workflow written; needs the submodule commits pushed (section 6) and Pages enabled |
 
 ## 8. Tests
 
-- **Bundle smoke test:** build the browser bundle, load it in vitest with
-  `happy-dom`, validate a correct and an incorrect model, and check the
-  diagnostics. `tonto`'s own test stops a new Node import before it is merged;
-  this one catches whatever still reaches the playground's bundle on a pin
-  update.
-- **Pipeline golden test:** for each example, the `ViewModel` from the worker
-  equals the one `tonto-view-cli` prints for the same file.
-- **Look at the picture:** compare the playground's SVG export with
-  `tonto-view <file> --svg` for each example. Layout defects are invisible in
-  the markup.
-- **End-to-end:** Playwright: type a class, see it appear; introduce a syntax
-  error, see the stale notice and the old picture; click a box, see the cursor
-  move.
+Implemented:
+
+- **Language, in Node with the stand-ins** (`test/language.test.ts`): the
+  README model validates silently; a broken one gets the rule's error; a repair
+  is offered for the playground's document; the diagram reading has every
+  class; a parse error names its line. `tonto`'s own test stops a new Node
+  import before it is merged.
+- **Every example** (`test/examples.test.ts`): each of the 35 patterns, as the
+  Examples menu writes it, validates in silence.
+- **The relay and share links** (`test/lsp-relay.test.ts`, `test/share.test.ts`).
+- **End-to-end, in Chromium** (`e2e/playground.spec.ts`, against the
+  production build): no page errors; a typed class appears without moving
+  placed ones; a broken parse keeps the picture and names the line; a quick fix
+  applies; editor and diagram select each other; a share link carries the
+  arrangement to a fresh browser; an example replaces the text and Undo brings
+  it back; export; one pane at a time on a phone. A real browser is the point:
+  the `process` global the language once read unguarded passed every test run
+  in Node.
+
+Not yet: comparing the worker's `ViewModel` and the exported SVG with
+`tonto-view-cli`'s for each example.
 
 ## 9. Risks
 
@@ -316,7 +364,8 @@ tests.
 |---|---|---|
 | A new Node import in `tonto-language` | the browser build breaks on a pin bump | `tonto`'s `core-entry.test.ts` fails on it before it merges (§6); the bundle smoke test (§8) catches the rest |
 | Duplicate Langium in the bundle | services silently fail to resolve | dedupe in the build; assert one copy in the smoke test |
-| `monaco-languageclient` version churn | editor breaks on upgrade | pin exact versions; upgrade deliberately |
+| Monaco's LSP client is new (0.55) and differs from VS Code's | an upgrade changes what the relay must bridge | exact version pinned; the relay's tests and the quick-fix end-to-end test fail if it does |
+| `relator-paths.ts` drifts from the extension's private copy | Arrange differs between VS Code and the page | the file names its source; drop it for an import if the visualizer exports it |
 | Bundle size (~750 KB gzipped core + Monaco) | slow first load on poor connections | load ELK and the layout worker lazily; cache with a service worker |
 | `AsyncLocalStorage` substitute | wrong ontology context if builds interleave | keep the shim local; serialize document builds and verify context behavior; an upstream context API is not planned (§6) |
 | The panel or its protocol changes in the visualizer | the hosted panel breaks or misreads messages | the playground loads the panel's body, script and protocol from the visualizer's exports, never a copy; the visualizer's tests check every element the panel asks for and that no export reaches `vscode`, and its `AGENTS.md` treats a protocol change as breaking (§6) |
