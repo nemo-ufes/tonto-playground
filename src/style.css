@@ -118,7 +118,7 @@ body {
     display: none;
 }
 
-.pane-switch button[aria-pressed="true"] {
+#bar .pane-switch button[aria-pressed="true"] {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--accent-foreground);
@@ -156,6 +156,52 @@ body {
     height: 100%;
     border: 0;
     display: block;
+}
+
+dialog {
+    background: var(--surface);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+dialog p {
+    margin: 0 0 10px;
+    font-weight: 600;
+}
+
+dialog form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 15em;
+}
+
+dialog button {
+    font: inherit;
+    text-align: left;
+    color: var(--foreground);
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+dialog button:hover,
+dialog button:focus-visible {
+    border-color: var(--accent);
+    outline: none;
+}
+
+dialog button.cancel {
+    margin-top: 4px;
+    text-align: center;
 }
 
 .toast {

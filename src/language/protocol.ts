@@ -33,7 +33,24 @@ export type ToWorker =
     | { type: 'content'; content: ContentOptions };
 
 /** Worker → page. */
-export type FromWorker = { type: 'view' } & ViewUpdate;
+export type FromWorker =
+    | ({ type: 'view' } & ViewUpdate)
+    /**
+     * tonto's catalog of modeling patterns, sent once at start: the module
+     * that holds it imports the whole language, which is the worker's to load.
+     */
+    | { type: 'patterns'; patterns: Example[] };
+
+/** A pattern from the catalog, as the Examples menu offers it. */
+export interface Example {
+    name: string;
+    group: string;
+    title: string;
+    intent: string;
+    note: string;
+    source: string;
+    model: string;
+}
 
 export interface ViewUpdate {
     /** The editor's version of the document this was derived from. */

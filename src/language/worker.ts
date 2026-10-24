@@ -13,6 +13,7 @@ import type { LangiumDocument } from 'langium';
 import { DocumentState, EmptyFileSystem } from 'langium';
 import { startLanguageServer } from 'langium/lsp';
 import { createTontoServices } from 'tonto-language/core';
+import { PATTERNS } from 'tonto-language/patterns';
 import type { ContentOptions } from 'tonto-view';
 import { defaultContentOptions } from 'tonto-view';
 import { BrowserMessageReader, BrowserMessageWriter, createConnection } from 'vscode-languageserver/browser';
@@ -51,6 +52,9 @@ function serve(lsp: MessagePort, view: MessagePort): void {
             send();
         }
     });
+
+    const patterns: FromWorker = { type: 'patterns', patterns: PATTERNS.map(pattern => ({ ...pattern })) };
+    view.postMessage(patterns);
 
     view.onmessage = (event: MessageEvent<ToWorker>) => {
         if (event.data.type === 'content') {

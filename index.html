@@ -34,6 +34,15 @@
         <div id="divider" role="separator" aria-orientation="vertical" aria-label="Resize the panes" tabindex="0"></div>
         <section id="diagram" aria-label="OntoUML diagram"></section>
     </main>
+    <dialog id="exportDialog" aria-labelledby="exportTitle">
+        <form method="dialog">
+            <p id="exportTitle">Export the diagram as</p>
+            <button value="svg" type="submit">SVG drawing</button>
+            <button value="png" type="submit">PNG picture</button>
+            <button value="tontoview" type="submit" title="The arrangement, for the tonto visualizer in VS Code">Arrangement (.tontoview)</button>
+            <button value="" type="submit" class="cancel">Cancel</button>
+        </form>
+    </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="./src/main.ts"></script>
 </body>

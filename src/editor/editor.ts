@@ -24,6 +24,13 @@ export interface Editor {
     setDark(dark: boolean): void;
     /** Puts the cursor at a 0-based line and character and brings it into view. */
     reveal(line: number, character: number): void;
+    /**
+     * Replaces the whole text as one edit, so Undo brings back what was there,
+     * and returns the version the replacement made.
+     */
+    replaceText(text: string): number;
+    /** The 0-based line the cursor moved to. */
+    onCursorLine(listener: (line: number) => void): void;
 }
 
 export function createEditor(container: HTMLElement, options: EditorOptions): Editor {
@@ -67,6 +74,24 @@ export function createEditor(container: HTMLElement, options: EditorOptions): Ed
             editor.setPosition(position);
             editor.revealPositionInCenterIfOutsideViewport(position);
             editor.focus();
+        },
+        replaceText: text => {
+            editor.pushUndoStop();
+            editor.executeEdits('replace', [{ range: model.getFullModelRange(), text }]);
+            editor.pushUndoStop();
+            editor.setPosition({ lineNumber: 1, column: 1 });
+            editor.revealLine(1);
+            return model.getVersionId();
+        },
+        onCursorLine: listener => {
+            let last = -1;
+            editor.onDidChangeCursorPosition(event => {
+                const line = event.position.lineNumber - 1;
+                if (line !== last) {
+                    last = line;
+                    listener(line);
+                }
+            });
         }
     };
 }
