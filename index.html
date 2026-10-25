@@ -5,11 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Write a tonto ontology and see its OntoUML diagram, in the browser. Nothing is sent anywhere.">
     <title>tonto playground</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='2' width='6' height='4' rx='1' fill='%23e88'/%3E%3Crect x='9' y='10' width='6' height='4' rx='1' fill='%238c8'/%3E%3Cpath d='M4 6v6h5' stroke='%23666' fill='none'/%3E%3C/svg%3E">
+    <!-- From tonto-brand: the 16-px drawing for tabs, the PNG where SVG icons are not read. -->
+    <link rel="icon" type="image/svg+xml" href="/brand/tonto-icon-16.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/tonto-icon-32.png">
+    <link rel="apple-touch-icon" href="/brand/tonto-icon-256.png">
+    <meta name="theme-color" content="#F4F3F0" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
 </head>
 <body>
     <header id="bar">
-        <span class="brand">tonto <span class="brand-light">playground</span></span>
+        <a class="brand" href="https://github.com/nemo-ufes/tonto" target="_blank" rel="noopener" title="tonto, a textual ontology modeling language">
+            <img class="brand-logo for-light" src="/brand/tonto-horizontal-light.svg" alt="tonto" width="110" height="36">
+            <img class="brand-logo for-dark" src="/brand/tonto-horizontal-dark.svg" alt="tonto" width="110" height="36">
+            <span class="brand-light">playground</span>
+        </a>
         <label class="examples">
             <span class="visually-hidden">Open an example</span>
             <select id="examples" title="Replace the text with an example model">

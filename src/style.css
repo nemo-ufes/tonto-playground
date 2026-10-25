@@ -1,6 +1,9 @@
 :root {
+    /* tonto-brand: tile, ink, paper and the dark background. */
+    --brand-tile: #F7B83D;
+    --brand-ink: #111111;
     --background: #ffffff;
-    --surface: #f3f3f3;
+    --surface: #F4F3F0;
     --foreground: #1f1f1f;
     --muted: #5f5f5f;
     --border: #d4d4d4;
@@ -14,7 +17,7 @@
 
 :root[data-theme="dark"] {
     --background: #1e1e1e;
-    --surface: #252526;
+    --surface: #141414;
     --foreground: #d4d4d4;
     --muted: #a0a0a0;
     --border: #3c3c3c;
@@ -54,14 +57,34 @@ body {
 }
 
 .brand {
-    font-weight: 600;
-    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
     margin-right: 8px;
+    color: inherit;
+    text-decoration: none;
     white-space: nowrap;
 }
 
+/*
+ * The logo keeps the clear space it is drawn with -- 120 of its 640 units on
+ * every side -- and the negative margins let the bar ignore it rather than
+ * growing around it.
+ */
+.brand-logo {
+    display: block;
+    height: 36px;
+    width: auto;
+    margin: -7px -4px -7px -7px;
+}
+
+:root[data-theme="dark"] .brand-logo.for-light,
+:root:not([data-theme="dark"]) .brand-logo.for-dark {
+    display: none;
+}
+
 .brand-light {
-    font-weight: 400;
+    font-size: 15px;
     color: var(--muted);
 }
 
@@ -88,6 +111,7 @@ body {
 #bar button:focus-visible,
 #bar select:focus-visible,
 #bar .about:focus-visible,
+#bar .brand:focus-visible,
 #divider:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
@@ -119,9 +143,9 @@ body {
 }
 
 #bar .pane-switch button[aria-pressed="true"] {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--accent-foreground);
+    background: var(--brand-tile);
+    border-color: var(--brand-tile);
+    color: var(--brand-ink);
 }
 
 #split {

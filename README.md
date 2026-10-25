@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/brand/tonto-horizontal-dark.svg">
+  <img src="public/brand/tonto-horizontal-light.svg" alt="tonto" height="72">
+</picture>
+
 # tonto playground
 
 [tonto](https://github.com/nemo-ufes/tonto) in the browser: one `.tonto`
@@ -64,6 +69,7 @@ as described in the [tonto](https://github.com/nemo-ufes/tonto) and
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE). The built page bundles third-party packages,
+MIT. See [LICENSE](LICENSE). The icons and logos in `public/brand` are tonto's
+brand assets, used as supplied. The built page bundles third-party packages,
 listed with their licences in `THIRD-PARTY-NOTICES.txt` beside it; the ELK
 layout engine is used under the Eclipse Public License 2.0.
