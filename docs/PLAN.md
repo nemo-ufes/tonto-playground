@@ -196,9 +196,8 @@ The constraints:
   visualizer change in §6 is merged. Before it, `tonto-view/src/language.ts`
   imports `getEffectiveNatures` and `isUltimateSortal` by path from
   `vendor/tonto/packages/language/out/`.
-- The visualizer pins its own tonto submodule. On `main` that is `7cca85f`
-  (2026-10-19, tonto 0.9.1); the visualizer branch in §6 moves it to the tonto
-  commit that adds `/core` (tonto 0.9.2).
+- The visualizer pins its own tonto submodule: `75c0544`, the commit that
+  adds `/core`, at the playground's current pin.
 - Two copies of Langium in one bundle break the language at runtime: services
   registered with one copy are invisible to the other.
 
@@ -269,8 +268,10 @@ playground.
 
 ### Made: declared entry points and the tests that hold them
 
-These are on branches, committed and not yet pushed or merged. Each is
-additive: the VS Code extensions, CLI and MCP server behave as before.
+All merged and pushed: tonto's in v0.9.3, the visualizer's in v0.3.1, and
+the Safari fix on the visualizer's `main` after it (`c8a69eb`, which the
+playground pins). Each is additive: the VS Code extensions, CLI and MCP
+server behave as before.
 
 | repository | branch | commit | change |
 |---|---|---|---|
@@ -278,15 +279,14 @@ additive: the VS Code extensions, CLI and MCP server behave as before.
 | `tonto-visualizer` | `core-entry-and-panel-exports` | `bc563d2` | Moves the tonto pin to `75c0544`; `tonto-view` reads the language through `/core` instead of by path. |
 | `tonto-visualizer` | `core-entry-and-panel-exports` | `7abfaf9` | The panel body moves to `src/webview/skeleton.ts`, shared by the extension and its tests. An `exports` map names `panel/script`, `panel/style`, `panel/skeleton`, `panel/protocol`, `panel/restoration` and `panel/filters`; `test/exports.test.ts` fails if any of them reaches `vscode`; `AGENTS.md` says what the exports promise. |
 
-They land in this order:
+Found later, through the playground: in Safari (WebKit 26.5) association
+stereotypes were drawn without their halo, so the line ran through them.
+`1df695c` drops their letter-spacing, which caused it, with a test; merged
+into the visualizer's `main` as `c8a69eb`.
 
-1. Merge `tonto`'s `core-entry`. The visualizer's pin names `75c0544`, which
-   exists only in a local clone until it is pushed, and the visualizer's CI
-   checks submodules out from GitHub. If the merge squashes or rebases, move
-   the visualizer pin to the merged commit.
-2. Merge the visualizer branch only after tonto's `main` has `/core`: its
-   nightly CI builds against tonto's current `main`.
-3. Pin the playground to the merged visualizer revision (§4).
+They landed in this order, which is the order any later change of the same
+kind should follow: tonto first (the visualizer's pin and its nightly CI need
+the commit on tonto's `main`), then the visualizer, then the playground's pin.
 
 ### Not needed, and not planned
 
@@ -332,7 +332,7 @@ tests.
 | 2 | Static diagram | The worker sends `ViewModel`s; the page lays them out and draws SVG with pan/zoom; a broken parse keeps the last good picture. | done, together with 3: the reused panel draws |
 | 3 | Interactive diagram | Reused panel in the page with the page host: drag, auto-arrange, filters, export, links between editor and diagram in both directions. | done |
 | 4 | Playground | Examples, share link, local saving, file open/download, `.tontoview` download, themes. | done, with one pane at a time on a phone |
-| 5 | Publish | GitHub Actions builds and deploys to GitHub Pages on every push to `main`. | workflow written; needs the submodule commits pushed (section 6) and Pages enabled |
+| 5 | Publish | GitHub Actions builds and deploys to GitHub Pages on every push to `main`. | workflow written, submodule pins published; needs the repository pushed and Pages set to deploy from GitHub Actions |
 
 ## 8. Tests
 
